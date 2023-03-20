@@ -16,29 +16,23 @@ type Ticket struct {
 	Price              int
 }
 
+type Tickets []Ticket
+
 /* -------------------------------- Exercise 1 ------------------------------- */
-func GetTotalTickets(destination string) (int, error) {
+func (tickets *Tickets) GetTotalTickets(destination string) int {
 	total := 0
-	Tickets, err := RecoverData()
-	if err != nil {
-		return total, err
-	}
-	for _, v := range Tickets {
+	for _, v := range *tickets {
 		if v.DestinationCountry == destination {
 			total++
 		}
 	}
-	return total, nil
+	return total
 }
 
 /* -------------------------------- Exercise 2 ------------------------------- */
-func GetCountByPeriod(time string, chTotal chan int, chErr chan error) {
+func (tickets *Tickets) GetCountByPeriod(time string, chTotal chan int, chErr chan error) {
 	var condition func(int) bool
 	total := 0
-	Tickets, err := RecoverData()
-	if err != nil {
-		chErr <- err
-	}
 	switch time {
 	case "EarlyMorning":
 		condition = GetEarlyMornings
@@ -51,7 +45,7 @@ func GetCountByPeriod(time string, chTotal chan int, chErr chan error) {
 	default:
 		chErr <- errors.New("Error: The time entered is incorrect")
 	}
-	for _, v := range Tickets {
+	for _, v := range *tickets {
 		hour, err := strconv.Atoi(strings.Split(string(v.FlightTime), ":")[0])
 		if err != nil {
 			chErr <- errors.New("Error: Can not convert strings to type int")
@@ -76,25 +70,20 @@ func GetNights(hour int) bool {
 }
 
 /* -------------------------------- Exercise 3 ------------------------------- */
-func AverageDestination(destination string) (float64, error) {
-	Tickets, err1 := RecoverData()
-	if err1 != nil {
-		return 0, err1
+func (tickets *Tickets) AverageDestination(destination string) (float64, error) {
+	total := tickets.GetTotalTickets(destination)
+	cantFlights := len(*tickets)
+	if cantFlights == 0 {
+		return 0, errors.New("Error: Can not operate on an empty file")
 	}
-	total, err2 := GetTotalTickets(destination)
-	if err2 != nil {
-		return 0, err2
-	}
-	cantFlights := len(Tickets)
 	return float64(total) / float64(cantFlights), nil
 }
 
 /* ------------------------------- RecoverData ------------------------------ */
-func RecoverData() ([]Ticket, error) {
-	var tickets = []Ticket{}
+func (tickets *Tickets) RecoverData() error {
 	res, err := os.ReadFile("./tickets.csv")
 	if err != nil {
-		return []Ticket{}, errors.New("Error: Can not read file")
+		return errors.New("Error: Can not read file")
 	}
 	data := strings.Split(string(res), "\n")
 	for _, d := range data {
@@ -103,7 +92,7 @@ func RecoverData() ([]Ticket, error) {
 			cat := strings.Split(d, ",")
 			intVar, err := strconv.Atoi(cat[0])
 			if err != nil {
-				return []Ticket{}, errors.New("Error: Can not convert strings to type int")
+				return errors.New("Error: Can not convert strings to type int")
 			}
 			tick.Id = intVar
 			tick.Name = cat[1]
@@ -112,11 +101,11 @@ func RecoverData() ([]Ticket, error) {
 			tick.FlightTime = cat[4]
 			intVar, err = strconv.Atoi(cat[5])
 			if err != nil {
-				return []Ticket{}, errors.New("Error: Can not convert strings to type int")
+				return errors.New("Error: Can not convert strings to type int")
 			}
 			tick.Price = intVar
-			tickets = append(tickets, tick)
+			*tickets = append(*tickets, tick)
 		}
 	}
-	return tickets, nil
+	return nil
 }
